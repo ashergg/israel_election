@@ -60,18 +60,19 @@ def read_data(url):
 
 def margin(results, threshold):
     """
+    Removes parties which didn't pass the required threshold
     
     Parameters
     ----------
-    results : TYPE
+    results : pandas DataFrame
         DESCRIPTION.
     threshold : float
         the required percentage threshold for entering the parliament (not decimal).
 
     Returns
     -------
-    TYPE
-        DESCRIPTION.
+    results : pandas DataFrame
+        the results DataFrame without parties which didn't pass the threshold.
 
     """
     if threshold < 1:
@@ -79,6 +80,20 @@ def margin(results, threshold):
     return results[results['votes'] > (threshold/100)*results['votes'].sum()]
 
 def short_names(results):
+    """
+    makes the names shorter in the 'Party_name' Series 
+
+    Parameters
+    ----------
+    results : pd DataFrame
+        the election results.
+
+    Returns
+    -------
+    results : pd DataFrame
+        the results with shrter parties names.
+
+    """
     results['Party_name'] = results['Party_name'].str.split().str[0:2].str.join(' ')
     return results
 

@@ -54,8 +54,8 @@ def read_data(url):
     """
     
     dfs = pd.read_html(url)
-    results = dfs[2].iloc[:,[0,3]]
-    results.columns = ['Party_name', 'votes']
+    results = dfs[2].iloc[:,[0,1,3]]
+    results.columns = ['Party_name', 'letters', 'votes']
     return results
 
 def margin(results, threshold):
@@ -65,7 +65,7 @@ def margin(results, threshold):
     Parameters
     ----------
     results : pandas DataFrame
-        DESCRIPTION.
+        election results.
     threshold : float
         the required percentage threshold for entering the parliament (not decimal).
 
@@ -100,9 +100,9 @@ def short_names(results):
 
 def main():
     url = 'https://votes23.bechirot.gov.il/nationalresults'
-    results = short_names(margin(read_data(url), 2.5))
+    results = short_names(margin(read_data(url), 3.25))
     results['seats'] = bader_ofer(results['votes'], 120)
-    print(results[['Party_name', 'seats']])
+    print(results[['letters', 'seats']])
 
 
 if __name__ == '__main__':

@@ -28,13 +28,13 @@ def bader_ofer(votes, mandates):
     moded = votes.sum()//mandates
     seats = votes // moded
     while seats.sum() < mandates:
-        seats[np.argmax(votes // (seats + 1))] += 1
+        seats.iloc[np.argmax(votes // (seats + 1))] += 1
     return seats
 
 
 def read_data(url):
     """
-    Reads the election results into pandas DataFrame
+    Read the election results into pandas DataFrame
     
     Parameters
     ----------
@@ -54,13 +54,16 @@ def read_data(url):
     """
     
     dfs = pd.read_html(url)
-    results = dfs[2].iloc[:,[0,1,3]]
+    if dfs[2].shape[1] == 5:
+        results = dfs[2].iloc[:,[0,1,4]]
+    else:
+        results = dfs[2].iloc[:,[0,1,3]]
     results.columns = ['Party_name', 'letters', 'votes']
     return results
 
 def margin(results, threshold):
     """
-    Removes parties which didn't pass the required threshold
+    Remove parties which didn't pass the required threshold
     
     Parameters
     ----------
@@ -81,7 +84,7 @@ def margin(results, threshold):
 
 def short_names(results):
     """
-    makes the names shorter in the 'Party_name' Series 
+    Make the names shorter in the 'Party_name' Series 
 
     Parameters
     ----------
@@ -94,14 +97,47 @@ def short_names(results):
         the results with shrter parties names.
 
     """
-    results['Party_name'] = results['Party_name'].str.split().str[0:2].str.join(' ')
+    results['Party_name'] = (results['Party_name'].str.split()
+                             .str[0:2].str.join(' '))
     return results
 
+def merge_agreements(results, agreements):
+    merged_results = results[~results['letters']
+                             .isin(np.array(agreements).flatten())]
+    sub_results = []
+    for agreement in agreements:
+        agreements_results = results[results['letters'].isin(agreement)]
+        merged_results = pd.concat([merged_results,
+                    pd.DataFrame(agreements_results.sum()).transpose()],
+                                   ignore_index=True)
+        sub_results.append(agreements_results)
+    return merged_results, sub_results
+
+def allocate(results, agreements, threshold):
+    results = margin(results, threshold)
+    merged_results, sub_results = merge_agreements(results, agreements)
+    merged_results['seats'] = bader_ofer(merged_results['votes'], 120)
+    for i in range(len(sub_results)):
+        seats = int(merged_results[merged_results['letters'] 
+                                   == sub_results[i]['letters'].sum()]['seats'])
+        sub_results[i]['seats'] = bader_ofer(sub_results[i]['votes'], seats)
+        #TODO: check reason for warnning
+    results = pd.concat([pd.merge(results, merged_results)]
+                        + [pd.merge(results, i) for i in sub_results],
+                        ignore_index=True).sort_values(by=['seats'],
+                                                       ascending=False,
+                                                       ignore_index=True)
+    return results
+
+def read_agreements():
+    agreements = pd.read_csv('agreements.csv', header=None).to_numpy()
+    return agreements
 
 def main():
     url = 'https://votes23.bechirot.gov.il/nationalresults'
-    results = short_names(margin(read_data(url), 3.25))
-    results['seats'] = bader_ofer(results['votes'], 120)
+    results = read_data(url)
+    agreements = read_agreements()
+    results = allocate(results, agreements, 3.25)
     print(results[['letters', 'seats']])
 
 
